@@ -1,0 +1,65 @@
+# Ingenuity Mars Helicopter - 블레이드 최적설계 실험 테스트베드
+# conda 가상환경 설정 파일
+#
+# [설치 방법]
+#   conda env create -f 0219/environment.yml
+#   conda activate mujoco_air
+#
+# [업데이트]
+#   conda env update -f 0219/environment.yml --prune
+#
+# [삭제 후 재설치]
+#   conda env remove -n mujoco_air
+#   conda env create -f 0219/environment.yml
+#
+# 실제 환경: Python 3.10.19 / MuJoCo 3.3.7 (Windows 11)
+
+name: mujoco_air
+
+channels:
+  - defaults
+  - conda-forge
+
+dependencies:
+  # ── Python 런타임 ──────────────────────────────────────────────────────────
+  - python=3.10.19
+
+  # ── 빌드 도구 ─────────────────────────────────────────────────────────────
+  - pip
+  - setuptools
+  - wheel
+
+  # ── pip 패키지 ─────────────────────────────────────────────────────────────
+  - pip:
+    # MuJoCo 시뮬레이터 (핵심)
+    - mujoco==3.3.7
+
+    # 수치/과학 계산
+    - numpy==2.2.6
+    - scipy==1.15.3
+
+    # 최적화
+    - pymoo==0.6.1.6          # NSGA-II 다목적 최적화
+    - scikit-learn==1.7.2     # GP 서로게이트 모델
+
+    # 데이터 처리 및 시각화
+    - matplotlib==3.10.7
+    - pandas==2.3.3
+    - tqdm==4.67.1
+
+    # MuJoCo 뷰어 의존
+    - glfw==2.10.0
+    - PyOpenGL==3.1.10
+    - pillow==12.1.1
+
+    # 키보드 인터페이스 (hover_keyboard.py)
+    - pynput==1.8.1
+    - pygame==2.6.1
+
+    # 컨트롤러 유틸
+    - simple-pid==2.0.1
+
+    # 기타 유틸
+    - opencv-python==4.12.0.88
+    - joblib==1.5.3
+    - alive-progress==3.3.0

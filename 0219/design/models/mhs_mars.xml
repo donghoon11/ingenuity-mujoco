@@ -1,0 +1,149 @@
+<mujoco model="Ingenuity Mars">
+    <!-- Mars-patched MJCF for blade optimization testbed.
+         Based on mhs.xml with 6 patches:
+         1) assetdir path fix (design/models/ -> root/assets)
+         2) Mars gravity (-3.71)
+         3) Mars density/viscosity (0.015 / 1.1e-5)
+         4) Thrust gear retuned (50 -> 6)
+         5) Attitude gear retuned (0.09 -> 0.5)
+         6) Yaw actuator added (z_rotation)
+    -->
+    <compiler assetdir="../../../assets" autolimits="true"/>
+    <option timestep="0.008" density="0.015" viscosity="1.1e-5" gravity="0 0 -3.71"/>
+
+    <default>
+        <default class="ingenuity">
+            <geom mass="0"/>
+            <default class="visual">
+                <geom group="2" type="mesh" contype="0" conaffinity="0"/>
+            </default>
+            <default class="collision">
+                <geom group="3" type="box"/>
+                <default class="rotor">
+                    <geom type="ellipsoid"/>
+                </default>
+            </default>
+        </default>
+    </default>
+
+    <asset>
+        <texture type="2d" file="carbon.png"/>
+        <material name="box" rgba="1 1 1 1"/>
+        <material name="blades" texture="carbon" rgba="0.3 0.3 0.3 1"/>
+        <material name="legs" rgba="0.05 0.05 0.05 0.8"/>
+
+        <mesh name="mainBody" file="mhs_mainbody_v16.stl"/>
+        <mesh name="topBlades" file="mhs_topblades_v16.stl"/>
+        <mesh name="bottomBlades" file="mhs_bottomblades_v16.stl"/>
+        <mesh name="leg01Blades" file="mhs_leg01_v16.stl"/>
+        <mesh name="leg02Blades" file="mhs_leg02_v16.stl"/>
+        <mesh name="leg03Blades" file="mhs_leg03_v16.stl"/>
+        <mesh name="leg04Blades" file="mhs_leg04_v16.stl"/>
+    </asset>
+
+    <worldbody>
+        <body name="ingenuity" pos="0 0 0.5" childclass="ingenuity">
+            <freejoint/>
+            <geom
+                class="visual"
+                material="box"
+                mesh="mainBody"
+                pos="0 0 0"
+                quat="0 0 1 0"
+            />
+            <geom class="collision" mass="0.5"  size="0.084 0.097 0.065" pos="0 0 -0.145"/>
+            <geom class="collision" mass="0.25" size="0.04 0.04 0.10" pos="0 0 0.03"/>
+            <geom class="collision" mass="0.25" size="0.08 0.21 0.001" pos="0 0 0.14"/>
+            <body name="leg2">
+                <geom
+                    class="visual"
+                    material="legs"
+                    mesh="leg02Blades"
+                    pos="0.196 -0.1945 -0.215"
+                    quat="0 0 1 0"
+                />
+                <geom class="collision" mass="0.05" size="0.02 0.015 0.01"
+                    pos="0.293 -0.29 -0.329" quat="0.39 0 0 1"/>
+                <geom class="collision" mass="0.05" size="0.01 0.01 0.14"
+                    pos="0.196 -0.1945 -0.225" quat="-0.4 -0.2 0.45 1"/>
+            </body>
+            <body name="leg1">
+                <geom
+                    class="visual"
+                    material="legs"
+                    mesh="leg01Blades"
+                    pos="-0.1945 -0.196 -0.215"
+                    quat="0 0 1 0"
+                />
+                <geom class="collision" mass="0.05" size="0.02 0.015 0.01"
+                    pos="-0.293 -0.29 -0.329" quat="0.39 0 0 1"/>
+                <geom class="collision" mass="0.05" size="0.01 0.01 0.14"
+                    pos="-0.196 -0.1945 -0.225" quat="0.4 0.2 0.45 1"/>
+            </body>
+            <body name="leg3">
+                <geom
+                    class="visual"
+                    material="legs"
+                    mesh="leg03Blades"
+                    pos="0.1945 0.196 -0.215"
+                    quat="0 0 1 0"
+                />
+                <geom class="collision" mass="0.05" size="0.02 0.015 0.01"
+                    pos="0.293 0.29 -0.329" quat="0.39 0 0 1"/>
+                <geom class="collision" mass="0.05" size="0.01 0.01 0.14"
+                    pos="0.196 0.1945 -0.225" quat="0.4 -0.2 -0.45 1"/>
+            </body>
+            <body name="leg4">
+                <geom
+                    class="visual"
+                    material="legs"
+                    mesh="leg04Blades"
+                    pos="-0.196 0.1945 -0.215"
+                    quat="0 0 1 0"
+                />
+                <geom class="collision" mass="0.05" size="0.02 0.015 0.01"
+                    pos="-0.293 0.29 -0.329" quat="0.39 0 0 1"/>
+                <geom class="collision" mass="0.05" size="0.01 0.01 0.14"
+                    pos="-0.196 0.1945 -0.225" quat="-0.4 0.2 -0.45 1"/>
+            </body>
+            <!-- Top rotor: CW -->
+            <body name="top_rotor" pos="0 0 0" quat="0 0 1 0">
+                <joint name="top_rotor_joint" type="hinge" axis="0 0 1" damping="0" frictionloss="0"/>
+                <geom class="visual" material="blades" mesh="topBlades" pos="0 0 -0.0675"/>
+                <geom class="rotor" mass="0.1" pos="0 0 -0.0675" size="0.64 0.64 0.02"/>
+                <site name="thrust1" pos="0 0 -0.0830" quat="0 0 1 0"/>
+            </body>
+            <!-- Bottom rotor: CCW -->
+            <body name="bottom_rotor" pos="0 0 0" quat="0 0 1 0">
+                <joint name="bottom_rotor_joint" type="hinge" axis="0 0 1" damping="0" frictionloss="0"/>
+                <geom class="visual" material="blades" mesh="bottomBlades"
+                    pos="0 0 0.0092" quat="0.6 0 0 1"/>
+                <geom class="rotor" mass="0.1" pos="0 0 0.0092" size="0.64 0.64 0.02"/>
+                <site name="thrust2" pos="0 0 0.0150" quat="0 0 1 0"/>
+            </body>
+
+            <camera name="nav_cam" pos="0.08 0 -0.22" mode="fixed" xyaxes="0 -1 0 1 -1 1"/>
+            <site name="imu"/>
+            <site name="laser_rangefinder" pos="0 0 -0.22" quat="0 0 1 0"/>
+            <site name="thrustxy"/>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <!-- Patch 4: thrust gear 50 -> 6 (hover ctrl ~0.495) -->
+        <motor name="thrust1" site="thrust1" ctrlrange="-1 1" gear="0 0 6 0 0 0"/>
+        <motor name="thrust2" site="thrust2" ctrlrange="-1 1" gear="0 0 6 0 0 0"/>
+        <!-- Patch 5: attitude gear 0.09 -> 0.5 Nm -->
+        <motor name="x_movement" site="thrustxy" ctrlrange="-1 1" gear="0 0 0 0.5 0 0"/>
+        <motor name="y_movement" site="thrustxy" ctrlrange="-1 1" gear="0 0 0 0 0.5 0"/>
+        <!-- Patch 6: yaw actuator (new) -->
+        <motor name="z_rotation" site="thrustxy" ctrlrange="-1 1" gear="0 0 0 0 0 0.3"/>
+    </actuator>
+
+    <sensor>
+        <rangefinder name="sensor_laser" site="laser_rangefinder"/>
+        <gyro name="sensor_gyro" site="imu"/>
+        <accelerometer name="sensor_acc" site="imu"/>
+        <framequat name="sensor_quat" objtype="site" objname="imu"/>
+    </sensor>
+</mujoco>

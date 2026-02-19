@@ -1,0 +1,536 @@
+================================================================================
+Ingenuity Mars Helicopter - 블레이드 최적설계 실험 테스트베드
+구현 보고서 v1.0
+작성일: 2026-02-19
+================================================================================
+
+[목차]
+  1. 개요
+  2. 디렉토리 구조
+  3. 구현 범위 (Phase 0+1)
+  4. 파일별 상세 설명
+     4.1 config.py
+     4.2 blade_param.py
+     4.3 bemt.py
+     4.4 structural.py
+     4.5 models/mhs_mars.xml
+     4.6 models/scene_mars.xml
+     4.7 utils.py
+     4.8 controller.py
+     4.9 sim_interface.py
+     4.10 e0_baseline.py
+  5. MJCF 패치 상세
+  6. 핵심 수치 및 설계 근거
+  7. 실행 커맨드
+  8. 미구현 항목 (Phase 2+3)
+
+
+================================================================================
+1. 개요
+================================================================================
+
+Ingenuity Mars Helicopter의 블레이드 형상 파라미터화 및 공력-동역학 통합
+최적설계 실험 환경을 구현하였다.
+
+설계 방침:
+  - 기존 0219/ 코드(hover_basic.py, hover_keyboard.py) 및 루트 XML(mhs.xml,
+    scene.xml) 원본 보존 — 수정 없음
+  - 모든 신규 코드는 0219/design/ 하위에 작성
+  - B안 채택: 메시(STL) 고정, BEMT 공력 모델로 추력/토크 계산 →
+    MuJoCo actuator ctrl 값으로 주입
+  - 화성 환경(gravity=-3.71 m/s², density=0.015 kg/m³)으로 MJCF 패치
+
+구현 환경:
+  - 작업 경로: E:\mujoco_projects\ingenuity-mujoco\
+  - 테스트베드: 0219\design\
+  - Python 환경: conda mujoco_air
+  - MuJoCo Python 바인딩 사용
+
+
+================================================================================
+2. 디렉토리 구조
+================================================================================
+
+0219/design/
+├── config.py               경로, 물리 상수, 액추에이터 매핑, 설계변수 범위
+├── blade_param.py          BladeDesign 클래스 (12D 파라미터화)
+├── bemt.py                 BEMT 공력 모델 (추력/토크/전력 계산)
+├── structural.py           구조·진동 제약 평가
+├── utils.py                hover_basic.py 재사용 + 신규 헬퍼
+├── controller.py           PID 컨트롤러 (고도/자세/전진비행)
+├── sim_interface.py        MarsSimulator 클래스
+├── e0_baseline.py          E0: 베이스라인 동역학 캘리브레이션
+├── models/
+│   ├── mhs_mars.xml        화성 패치된 MJCF
+│   └── scene_mars.xml      독립 씬 (화성 배경 + 지면)
+└── results/
+    └── e0/                 E0 실험 결과 저장 위치
+
+원본 보존 (수정 없음):
+  0219/hover_basic.py
+  0219/hover_keyboard.py
+  mhs.xml
+  scene.xml
+
+
+================================================================================
+3. 구현 범위 (Phase 0+1)
+================================================================================
+
+Phase 0 — 기반 모듈 (MuJoCo 불필요)
+  - config.py        : 전역 설정 중앙화
+  - blade_param.py   : 12D 블레이드 파라미터화
+  - bemt.py          : BEMT 공력 엔진
+  - structural.py    : 구조·진동 제약 해석
+
+Phase 1 — MuJoCo 통합
+  - models/mhs_mars.xml  : 화성 환경 MJCF
+  - models/scene_mars.xml: 독립 씬
+  - utils.py             : 유틸리티 (hover_basic 재사용)
+  - controller.py        : 화성 튜닝 PID
+  - sim_interface.py     : 시뮬레이터 인터페이스
+  - e0_baseline.py       : E0 캘리브레이션 스크립트
+
+
+================================================================================
+4. 파일별 상세 설명
+================================================================================
+
+--------------------------------------------------------------------------------
+4.1 config.py — 중앙 설정
+--------------------------------------------------------------------------------
+모든 모듈이 import 하는 단일 설정 파일.
+
+[경로 상수]
+  DESIGN_DIR   = 0219/design/
+  PROJECT_ROOT = ingenuity-mujoco/
+  ASSETS_DIR   = ingenuity-mujoco/assets/
+  RESULTS_DIR  = 0219/design/results/
+  CODE_0219    = 0219/           (hover_basic.py 임포트용)
+
+[화성 환경]
+  MARS_GRAVITY        = 3.71     m/s²
+  RHO_NOMINAL         = 0.015    kg/m³
+  RHO_RANGE           = (0.012, 0.021)  kg/m³
+  MARS_VISCOSITY      = 1.1e-5   Pa·s  (CO2)
+  MARS_SPEED_OF_SOUND = 240.0    m/s   (CO2 @ ~210K)
+
+[기체 파라미터]
+  TOTAL_MASS    = 1.6  kg
+  MARS_WEIGHT   = 1.6 × 3.71 = 5.936  N
+  BLADE_RADIUS  = 0.606  m
+  NUM_BLADES    = 2      (로터당)
+  NUM_ROTORS    = 2      (동축 반전)
+
+[액추에이터 인덱스]
+  IDX_THRUST1 = 0  (ctrl[0]: 상부 로터 Z-force)
+  IDX_THRUST2 = 1  (ctrl[1]: 하부 로터 Z-force)
+  IDX_ROLL    = 2  (ctrl[2]: x_movement, 롤 토크)
+  IDX_PITCH   = 3  (ctrl[3]: y_movement, 피치 토크)
+  IDX_YAW     = 4  (ctrl[4]: z_rotation, 요 토크 ← 신규)
+
+[기어비]
+  THRUST_GEAR   = 6.0  N/ctrl     (패치: 50 → 6)
+  ATTITUDE_GEAR = 0.5  Nm/ctrl    (패치: 0.09 → 0.5)
+  YAW_GEAR      = 0.3  Nm/ctrl    (신규)
+
+  HOVER_CTRL = 5.936/2/6.0 = 0.495  (로터당 feedforward)
+
+[설계변수 (12개)]
+  인덱스  변수        하한     상한     단위
+  0       c0 r/R=0.15  0.030   0.150   m
+  1       c1 r/R=0.30  0.030   0.150   m
+  2       c2 r/R=0.50  0.030   0.150   m
+  3       c3 r/R=0.70  0.020   0.120   m
+  4       c4 r/R=0.95  0.015   0.080   m
+  5       theta_root   5.0     40.0    deg
+  6       theta_mid    2.0     25.0    deg
+  7       theta_tip   -5.0     15.0    deg
+  8       tc_root      0.08    0.25    -
+  9       tc_tip       0.04    0.12    -
+  10      camber       0.00    0.06    -
+  11      RPM          2000    3200    rev/min
+
+[최적화 제약]
+  RPM_MAX          = 3200      rev/min
+  TIP_MACH_MAX     = 0.80      -
+  CTRL_SAT_MAX     = 0.05      (5% 이하)
+  F1_BENDING_MIN   = 40.0      Hz
+  RESONANCE_MARGIN = 5.0       Hz
+
+[컨트롤러 기본값 (화성 튜닝)]
+  고도 PID  : KP=2.0, KI=0.3, KD=1.0, I_LIMIT=0.3
+  자세 PD   : KP=5.0, KD=1.5
+
+[구조 재료 (탄소섬유 복합재)]
+  E_MATERIAL    = 70.0e9  Pa
+  RHO_MATERIAL  = 1600    kg/m³
+  SPAR_FRACTION = 0.30    (스파 폭/코드 비율)
+
+
+--------------------------------------------------------------------------------
+4.2 blade_param.py — 블레이드 파라미터화
+--------------------------------------------------------------------------------
+12D 설계벡터 → 연속 코드/비틀림/두께 분포.
+
+[BladeDesign 클래스]
+  __init__(vector[12])
+    chord_ctrl[5]  : r/R = [0.15, 0.30, 0.50, 0.70, 0.95] 의 코드값
+    theta_root/mid/tip : r/R = [0.20, 0.55, 0.95] 의 비틀림각 (deg)
+    tc_root, tc_tip    : 루트/팁 두께비
+    camber             : 최대 캠버
+    rpm                : 작동 RPM
+
+  chord_at(r/R)    → CubicSpline 보간, 최소 5mm 플로어
+  twist_at(r/R)    → quadratic 보간 (deg)
+  twist_rad_at(r/R)→ radian 변환
+  tc_at(r/R)       → 루트-팁 선형 보간
+  omega()          → rad/s
+  tip_speed()      → m/s
+  tip_mach()       → Mach 수
+  solidity()       → 평균 솔리디티 σ = N_b·c_avg / (π·R)
+
+[baseline_design()]
+  STL 측정 상/하 블레이드 평균 코드값 사용
+  비틀림: 루트 25°, 중간 15°, 팁 8° (문헌 추정)
+  tc: 루트 0.25(상한), 팁 0.105
+  camber: 0.03
+  RPM: 2537
+
+
+--------------------------------------------------------------------------------
+4.3 bemt.py — BEMT 공력 엔진
+--------------------------------------------------------------------------------
+블레이드 요소 - 운동량 이론 (BEMT) 기반 정지 비행 해석.
+
+[airfoil_polar(alpha, tc, camber, Re, Mach)]
+  - Prandtl-Glauert 압축성 보정: Cl_α = 2π / √(1 - M²)
+  - 저 Re 보정: Re < 50k → Cl_α 최대 25% 감소
+  - 실속 모델: Cl_max = 1.1 + 0.5·camber
+  - 항력: Cd0 = 0.015 + 저Re항 + 두께항, Cd_induced = Cl²/(5π)
+  - 천음속 항력 급증: Mach > 0.65
+
+[prandtl_tip_loss(r, R, N_b, phi)]
+  F = (2/π)·arccos(exp(-f))
+  f = (N_b/2)·(R-r)/(r·sin(φ))
+
+[bemt_hover(blade, rho)]
+  방사 요소 30개, 각 요소 반복 수렴 (최대 100회, tol=1e-6, relaxation=0.3)
+  출력:
+    T          : 전체 추력 (N)
+    T_per_rotor: 로터당 추력 (N)
+    Q          : 로터당 토크 (Nm)
+    P          : 전체 전력 (W)
+    CT, CP, FM : 무차원 계수
+    ctrl_thrust : MuJoCo ctrl 값 = T_per_rotor / THRUST_GEAR
+    ctrl_yaw    : 요 ctrl 값 (토크 불균형 2% 모델)
+    converged  : 수렴 여부
+    radial     : 방사 분포 배열 (r, dT, dQ, alpha, Cl, Cd, phi, F)
+
+검증 목표: 베이스라인 @ 2537RPM, rho=0.015 → T/rotor ≈ 2.97 N
+
+
+--------------------------------------------------------------------------------
+4.4 structural.py — 구조 제약
+--------------------------------------------------------------------------------
+오일러-베르누이 보 근사 + Southwell 회전 강성화.
+
+[blade_section_properties(chord, tc)]
+  A = spar_fraction · chord · tc · chord
+  I = spar_fraction·chord · (tc·chord)³ / 12
+
+[estimate_non_rotating_freq(blade)]
+  Rayleigh-Ritz, 가정 모드 φ(x) = (x/L)²
+  ω² = ∫(EI·φ''²dx) / ∫(m·φ²dx)
+
+[estimate_first_bending_freq(blade)]
+  Southwell: f1 = √(f1_nr² + 1.1·f_rev²)
+
+[check_resonance_margins(blade, harmonics=[1,2,3,4])]
+  |f1 - n·f_rev| ≥ 5 Hz  (모든 고조파에 대해)
+
+[evaluate_structural(blade)]
+  전체 구조 제약 평가 dict 반환:
+    f1_bending, f_rev, resonance_margins,
+    blade_mass, total_rotor_mass, feasible
+
+
+--------------------------------------------------------------------------------
+4.5 models/mhs_mars.xml — 화성 패치 MJCF
+--------------------------------------------------------------------------------
+원본 mhs.xml 기반 6개 패치 적용.
+
+패치 내역:
+  1) compiler assetdir: "assets" → "../../../assets"
+     (design/models/ → ingenuity-mujoco/assets/ 상대 경로 수정)
+
+  2) gravity: (기본 -9.81) → "0 0 -3.71" (화성)
+
+  3) density / viscosity: 1.225 / 1.8e-5 → 0.015 / 1.1e-5 (화성 CO2)
+
+  4) 추력 기어: gear="0 0 50 0 0 0" → gear="0 0 6 0 0 0"
+     이유: gear=50이면 hover_ctrl≈0.059 (너무 작음)
+           gear=6이면 hover_ctrl≈0.495 (정상 범위)
+
+  5) 자세 기어: gear="0 0 0 0.09 0 0" → gear="0 0 0 0.5 0 0"
+     화성 저밀도 대기에서 자세 토크 부족 보완
+
+  6) 요 액추에이터 신규 추가:
+     <motor name="z_rotation" site="thrustxy"
+            ctrlrange="-1 1" gear="0 0 0 0 0 0.3"/>
+     → ctrl[4]로 요 제어 가능
+
+액추에이터 구성 (5개):
+  ctrl[0]: thrust1    gear=6   N/ctrl  (상부 로터 수직력)
+  ctrl[1]: thrust2    gear=6   N/ctrl  (하부 로터 수직력)
+  ctrl[2]: x_movement gear=0.5 Nm/ctrl (롤)
+  ctrl[3]: y_movement gear=0.5 Nm/ctrl (피치)
+  ctrl[4]: z_rotation gear=0.3 Nm/ctrl (요, 신규)
+
+센서 (원본 유지):
+  laser_rangefinder, gyro, accelerometer, framequat
+
+
+--------------------------------------------------------------------------------
+4.6 models/scene_mars.xml — 독립 씬
+--------------------------------------------------------------------------------
+화성 환경 비주얼:
+  - 스카이박스: 붉은 계열 그라디언트 (rgb1="0.6 0.3 0.15")
+  - 지면: 화성풍 붉은 체커 텍스처 (reflectance=0.05)
+  - 조명: 직사광 (pos="0 0 3")
+  - include: mhs_mars.xml
+
+
+--------------------------------------------------------------------------------
+4.7 utils.py — 유틸리티
+--------------------------------------------------------------------------------
+hover_basic.py 함수 재사용 + 신규 헬퍼.
+
+[hover_basic.py에서 재사용]
+  sys.path에 0219/ 동적 추가 → 원본 수정 없이 임포트
+  재사용 함수:
+    quat_to_euler, get_sensor_data, get_rotor_joint_indices,
+    update_rotor_visual, update_tracking_camera, apply_gust
+
+[신규 헬퍼]
+  load_mars_model(xml_path)  → (model, data) 로드
+  get_body_id(model, name)   → body ID 조회
+  extract_state(data)        → dict{pos, quat, vel, omega, euler}
+  reset_model(model, data, z_init)
+  ensure_results_dir(name)   → results/name/ 생성
+  log_to_csv(path, headers, rows)
+  save_json(path, data)      → numpy 타입 자동 변환
+  load_json(path)
+
+
+--------------------------------------------------------------------------------
+4.8 controller.py — PID 컨트롤러
+--------------------------------------------------------------------------------
+화성 환경 튜닝 값 적용.
+
+[AltitudePID]
+  출력: thrust_ctrl ∈ [0, 1]
+  파라미터:
+    ff_thrust = 0.495  (feedforward, hover 균형점)
+    kp = 2.0, ki = 0.3, kd = 1.0
+    i_limit = 0.3     (anti-windup)
+  compute(z_ref, z_meas, dt) → clip(ff + PID, 0, 1)
+
+  지구 대비 변경: KP 0.5 → 2.0 (화성 저중력, 낮은 공기저항으로 응답 지연)
+
+[AttitudePD]
+  출력: x_cmd, y_cmd, z_cmd ∈ [-1, 1]
+  파라미터:
+    kp = 5.0, kd = 1.5
+  compute(roll/pitch/yaw_ref, roll/pitch/yaw, p, q, r)
+
+[ForwardFlightController]
+  위치 오차 → 롤/피치 레퍼런스 각도 변환
+  kp_pos = 0.3, kd_pos = 0.5
+  max_tilt = 15°
+
+
+--------------------------------------------------------------------------------
+4.9 sim_interface.py — 시뮬레이터 인터페이스
+--------------------------------------------------------------------------------
+[SimResult]
+  시계열 컨테이너: time, pos, vel, euler, omega, ctrl, z_ref
+  compute_kpis() → KPI 딕셔너리:
+    alt_error_rms, alt_error_ss_rms (마지막 2s)
+    alt_error_max, roll_rms, pitch_rms
+    ctrl_saturation_rate (|ctrl|≥0.99 비율)
+    stable (고도 발산 판정: z ∈ [-1, 10] m)
+    settling_time (|z_err| < 5% z_ref 유지 시점)
+
+[MarsSimulator]
+  __init__(xml_path, headless)
+    scene_mars.xml 로드, body_id·rotor 인덱스 캐시
+
+  set_density(rho)
+    E2 밀도 스윕용 대기 밀도 변경
+
+  reset(z_init=0.5)
+    MuJoCo 상태 초기화 + 초기 고도 설정
+
+  run_open_loop(ctrl_sequence, duration)
+    시간 구간별 ctrl 명령 시퀀스로 오픈루프 실행
+
+  run_hover(ctrl_thrust, z_ref, use_controller, viewer)
+    AltitudePID + AttitudePD 내장 폐루프 호버
+    viewer=True: launch_passive 뷰어 동기화
+
+  run_trajectory(trajectory_fn, duration)
+    ForwardFlightController + AltitudePID + AttitudePD
+    trajectory_fn(t) → (x_ref, y_ref, z_ref)
+
+
+--------------------------------------------------------------------------------
+4.10 e0_baseline.py — E0 베이스라인 캘리브레이션
+--------------------------------------------------------------------------------
+패치된 모델의 동역학 부호 및 PID 동작 검증.
+
+[테스트 항목]
+  Test 1: 자유낙하 (1s, ctrl=0)
+    z 가속도 추정 → 화성 중력 ≈ -3.71 m/s² 확인
+
+  Test 2: 추력 부호 (1s, ctrl[0]=ctrl[1]=+0.5)
+    Δz > 0 → 상승(정상) / Δz < 0 → 부호 반전 필요
+
+  Test 3: 롤 (0.5s, ctrl[2]=+0.5)
+    결과 롤각 방향 확인
+
+  Test 4: 피치 (0.5s, ctrl[3]=+0.5)
+    결과 피치각 방향 확인
+
+  Test 5: 요 (0.5s, ctrl[4]=+0.5)
+    요각 방향 확인
+
+  Test 6: 폐루프 호버 (10s, z_ref=1.0m)
+    AltitudePID + AttitudePD → KPI 평가
+
+[출력 파일]
+  results/e0/sign_conventions.json  : 부호 관례, KPI 요약
+  results/e0/hover_log.csv          : 호버 시계열 (time, x, y, z, ...)
+
+
+================================================================================
+5. MJCF 패치 상세
+================================================================================
+
+항목              원본 mhs.xml        mhs_mars.xml        근거
+────────────────  ──────────────────  ──────────────────  ──────────────────────
+assetdir          "assets"            "../../../assets"   경로 수정
+gravity           (-9.81 기본)        "0 0 -3.71"         화성 중력
+density           1.225 kg/m³         0.015 kg/m³         화성 CO2 대기
+viscosity         1.8e-5 Pa·s         1.1e-5 Pa·s         화성 CO2 동점성
+thrust gear       50 N/ctrl           6 N/ctrl            hover_ctrl 재조정
+attitude gear     0.09 Nm/ctrl        0.5 Nm/ctrl         화성 저대기 보상
+yaw actuator      없음                0.3 Nm/ctrl 신규    요 제어 추가
+
+hover_ctrl 계산:
+  필요 추력 = 5.936 N / 2로터 = 2.968 N/rotor
+  gear=50: ctrl = 2.968/50 = 0.059  (너무 작음)
+  gear=6 : ctrl = 2.968/6  = 0.495  (정상 범위, ~50% 여유)
+
+
+================================================================================
+6. 핵심 수치 및 설계 근거
+================================================================================
+
+[기체 기본 수치]
+  전체 질량     = 1.6 kg
+  화성 중력     = 3.71 m/s²
+  화성 중량     = 5.936 N
+  로터 반경     = 0.606 m
+  로터 디스크면적 = π × 0.606² = 1.154 m²
+
+[베이스라인 블레이드 (STL 분석)]
+  로터당 블레이드 수  = 2
+  작동 RPM           = 2537
+  팁 속도            = 2537 × (2π/60) × 0.606 ≈ 161 m/s
+  팁 마하수          = 161/240 ≈ 0.671
+
+[BEMT 검증 목표]
+  T/rotor ≈ 2.97 N  (= 화성 중량의 절반)
+  호버 Figure of Merit ≈ 0.4~0.6
+
+[PID 튜닝 근거]
+  화성 환경에서 지구 대비:
+  - 중력 38% → 호버 동적 여유 감소
+  - 대기밀도 1.2% → 공기역학적 감쇠 미미
+  → 지구 tuning (KP=0.5) 대비 화성 tuning (KP=2.0) 강화 필요
+
+
+================================================================================
+7. 실행 커맨드
+================================================================================
+
+[사전 준비]
+conda activate mujoco_air
+pip install scipy matplotlib pandas scikit-learn tqdm
+
+[모듈 단독 테스트]
+# 블레이드 파라미터화 확인
+python 0219/design/blade_param.py
+
+# BEMT 공력 해석 (베이스라인 @ 2537RPM, rho=0.015)
+python 0219/design/bemt.py
+
+# 구조 제약 평가 (베이스라인)
+python 0219/design/structural.py
+
+[E0 캘리브레이션]
+# 뷰어 없이 실행 (배치)
+python 0219/design/e0_baseline.py
+
+# 뷰어 표시 (화성 환경 시각화)
+python 0219/design/e0_baseline.py --viewer
+
+[실행 위치]
+  반드시 ingenuity-mujoco/ 루트에서 실행:
+  cd E:\mujoco_projects\ingenuity-mujoco
+  python 0219/design/...
+
+[예상 E0 출력]
+  ======================================================================
+  E0: Baseline Dynamics Calibration (Mars-patched model)
+  ======================================================================
+
+  [Test 1] Freefall (ctrl=0, 1s)
+    z acceleration: -3.710 m/s^2 (expected: -3.71)
+    Gravity OK:     True
+
+  [Test 2] Thrust sign check (ctrl[0]=ctrl[1]=+0.5, 1s)
+    Delta z: +X.XXXX m -> Positive ctrl = UP (correct)
+
+  [Test 6] Closed-loop hover test (z_ref=1.0m, 10s)
+    Stable:          True
+    Alt error RMS:   X.XXXX m
+    Alt error SS:    X.XXXX m
+    Settling time:   X.XX s
+
+
+================================================================================
+8. 미구현 항목 (Phase 2+3)
+================================================================================
+
+[Phase 2 — 실험 스크립트]
+  e1_hover_map.py       : BEMT → ctrl → 10s 호버 배치 평가
+  e2_robust_hover.py    : 대기밀도 스윕 (5단계, 0.012~0.021 kg/m³)
+  e3_forward_flight.py  : 전진비행·웨이포인트·돌풍 응답
+  e4_structural.py      : structural.py 래퍼, MuJoCo 불필요
+
+[Phase 3 — 최적화 파이프라인]
+  doe.py                : LHS 실험계획 (scipy.stats.qmc) 100~200점
+  surrogate.py          : GP 서로게이트 모델 (sklearn)
+  optimizer.py          : NSGA-II 다목적 최적화 (pymoo)
+                          목적함수: 호버 전력 최소, 추력여유 최대, 제어여유 최대
+  pipeline.py           : 마스터 파이프라인
+  run_all.py            : CLI 진입점 (argparse)
+
+[필요 추가 패키지]
+  pip install pymoo   (NSGA-II용)
+
+================================================================================
+끝
+================================================================================

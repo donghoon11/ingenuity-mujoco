@@ -1,0 +1,29 @@
+{
+  "freefall_accel_z": -0.027694593606986503,
+  "gravity_matches_mars": false,
+  "thrust_positive_is_up": true,
+  "thrust_test_dz": 0.020157796698259012,
+  "x_movement_positive_result": "positive_roll",
+  "x_movement_roll_deg": 21.01207315107093,
+  "y_movement_positive_result": "positive_pitch",
+  "y_movement_pitch_deg": 21.79051026739782,
+  "z_rotation_positive_result": "positive_yaw (CCW from top)",
+  "z_rotation_yaw_deg": 18.760710980798137,
+  "hover_stable": true,
+  "hover_alt_error_rms": 0.24792165270094885,
+  "hover_alt_error_ss_rms": 0.2345978920118444,
+  "hover_settling_time": 9.992,
+  "hover_ctrl_saturation": 0.0224,
+  "model_info": {
+    "n_actuators": 5,
+    "timestep": 0.008,
+    "density": 0.015,
+    "gravity": [
+      0.0,
+      0.0,
+      -3.71
+    ],
+    "thrust_gear": 6.0,
+    "hover_ctrl": 0.49466666666666664
+  }
+}
