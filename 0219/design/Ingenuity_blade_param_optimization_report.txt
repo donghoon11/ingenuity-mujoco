@@ -1,0 +1,307 @@
+Ingenuity(화성 헬리콥터) 드론 블레이드 파라미터라이제이션 및 동적 성능평가/최적설계 실험 시나리오 (TXT 보고서, MuJoCo 반영판)
+작성일: 2026-02-19 (Asia/Seoul 기준)
+입력 MJCF: mhs.xml
+
+================================================================================
+0. 목적 및 범위
+--------------------------------------------------------------------------------
+[목적]
+- 제공된 Ingenuity(또는 Ingenuity 유사) 드론 설계 STL + MuJoCo MJCF(mhs.xml)을 기반으로,
+  블레이드(상·하 로터) 형상을 파라미터 기반으로 재정의하고,
+  블레이드 구조 변경이 '동적 성능(추력/전력/안정성/진동/제어여유)'에 미치는 영향을
+  MuJoCo 시뮬레이션(6-DOF rigid body + 외력/외토크)에서 정량 평가하여 최적설계까지 수행한다.
+
+[초기 범위(Phase 1)]
+- 블레이드(Top/Bottom rotor)만 우선 파라미터화.
+- MuJoCo 상에서는 현재 모델이 "공력 해석"을 자동 수행하지 않으므로,
+  (A) 블레이드 설계 → 추력/토크 모델(BEMT/경험식/서로게이트) 계산,
+  (B) 계산된 힘/모멘트를 MuJoCo actuator로 주입하는 형태로 실험을 구성한다.
+
+================================================================================
+1. 입력 데이터 및 파일 구성
+--------------------------------------------------------------------------------
+[사용 파일]
+- STL meshes(geometry):
+  - mhs_topblades_v16.stl
+  - mhs_bottomblades_v16.stl
+  - mhs_mainbody_v16.stl
+  - mhs_leg01_v16.stl ~ mhs_leg04_v16.stl
+
+- MuJoCo MJCF:
+  - mhs.xml  (model="Ingenuity")
+
+[MuJoCo 파일 구조 핵심]
+- <compiler assetdir="assets" autolimits="true"/>
+- <option timestep="0.008" density="1.225" viscosity="1.8e-05"/>
+
+※ 주의(중요): mhs.xml에는 gravity가 명시되어 있지 않음.
+   → MuJoCo 기본 gravity(0 0 -9.81)가 적용될 가능성이 크며, 화성 중력(-3.71)로 변경 필요.
+
+================================================================================
+2. MuJoCo MJCF(mhs.xml) 분석 결과 (실험 인터페이스 정의)
+--------------------------------------------------------------------------------
+2.1 시뮬레이션 옵션
+- timestep = 0.008 s  (≈ 125.0 Hz)
+- density  = 1.225 kg/m^3
+- viscosity= 1.8e-05 Pa·s
+
+권장 수정(화성 환경):
+- option gravity="0 0 -3.71"
+- density는 실험 변수로 관리(예: 0.012~0.021 kg/m^3), viscosity도 필요 시 CO2 기반으로 조정
+
+2.2 Asset(메시) 정의
+- MJCF는 7개 mesh asset을 사용:
+  mainBody/topBlades/bottomBlades/leg01~leg04  (파일명은 STL과 1:1 매칭)
+
+2.3 Body/질량 모델(현재 MJCF 기준)
+- 본체는 freejoint를 가진 단일 rigid body로 표현됨(전통적인 rotorcraft multi-body 아님)
+- 질량은 inertial 태그가 아니라 geom mass의 합으로 구성됨.
+- 총 질량(geom mass 합): 1.600 kg
+  (Earth 기준 무게 W≈15.70 N, Mars 기준 무게 W≈5.94 N)
+
+[질량 분해(geom mass)]
+  - body='ingenuity': mass geom=0.500 kg (class=collision, size=0.084 0.097 0.065)
+  - body='ingenuity': mass geom=0.250 kg (class=collision, size=0.04 0.04 0.10)
+  - body='ingenuity': mass geom=0.250 kg (class=collision, size=0.08 0.21 0.001)
+  - body='leg2': mass geom=0.050 kg (class=collision, size=0.02 0.015 0.01)
+  - body='leg2': mass geom=0.050 kg (class=collision, size=0.01 0.01 0.14)
+  - body='leg1': mass geom=0.050 kg (class=collision, size=0.02 0.015 0.01)
+  - body='leg1': mass geom=0.050 kg (class=collision, size=0.01 0.01 0.14)
+  - body='leg3': mass geom=0.050 kg (class=collision, size=0.02 0.015 0.01)
+  - body='leg3': mass geom=0.050 kg (class=collision, size=0.01 0.01 0.14)
+  - body='leg4': mass geom=0.050 kg (class=collision, size=0.02 0.015 0.01)
+  - body='leg4': mass geom=0.050 kg (class=collision, size=0.01 0.01 0.14)
+  - body='top_rotor': mass geom=0.100 kg (class=rotor, size=0.64 0.64 0.02)
+  - body='bottom_rotor': mass geom=0.100 kg (class=rotor, size=0.64 0.64 0.02)
+
+2.4 로터(body) 및 thrust site 정의
+- top_rotor: hinge joint axis=0 0 1 (damping=0, frictionloss=0)
+  - blade mesh: topBlades (pos=0 0 -0.0675), rotor collision ellipsoid size=0.64 0.64 0.02, mass=0.1
+  - thrust site: thrust1 (pos=0 0 -0.0830, quat=0 0 1 0)
+- bottom_rotor: hinge joint axis=0 0 1 (damping=0, frictionloss=0)
+  - blade mesh: bottomBlades (pos=0 0 0.0092, quat=0.6 0 0 1), rotor collision ellipsoid size=0.64 0.64 0.02, mass=0.1
+  - thrust site: thrust2 (pos=0 0 0.0150, quat=0 0 1 0)
+
+
+2.5 Actuator(제어 입력) 정의 — “MuJoCo에서 실험을 돌릴 때 가장 중요한 인터페이스”
+- actuator 정의(순서=ctrl 인덱스):
+  - actuator[0] name='thrust1', site='thrust1', ctrlrange=-1 1, gear='0 0 50 0 0 0'
+  - actuator[1] name='thrust2', site='thrust2', ctrlrange=-1 1, gear='0 0 50 0 0 0'
+  - actuator[2] name='x_movement', site='thrustxy', ctrlrange=-1 1, gear='0 0 0 0.09 0 0'
+  - actuator[3] name='y_movement', site='thrustxy', ctrlrange=-1 1, gear='0 0 0 0 0.09 0'
+
+- gear 해석(사이트 전송: gear= [translation_axis(3), rotation_axis(3)] ):
+  - thrust1: translation_axis=[0.0, 0.0, 50.0] , rotation_axis=[0.0, 0.0, 0.0]
+  - thrust2: translation_axis=[0.0, 0.0, 50.0] , rotation_axis=[0.0, 0.0, 0.0]
+  - x_movement: translation_axis=[0.0, 0.0, 0.0] , rotation_axis=[0.09, 0.0, 0.0]
+  - y_movement: translation_axis=[0.0, 0.0, 0.0] , rotation_axis=[0.0, 0.09, 0.0]
+
+[의미 정리]
+- thrust1 / thrust2:
+  - translation_axis = [0,0,50]  → site 로컬 +Z 방향으로 힘(Force)을 가하는 형태
+  - ctrlrange = [-1,1] → 최대 힘 스케일이 50N로 매우 큼
+  - thrust site의 quat가 "0 0 1 0"로 180도 회전이 포함되어 있으므로,
+    실제 월드 좌표에서 +Z(상승)인지 -Z(하강)인지 부호 확인 필요.
+    (권장: 간단히 1초 정도 ctrl=+0.2를 주고 z-가속 부호로 확인 후 표준화)
+
+- x_movement / y_movement:
+  - translation_axis = [0,0,0]
+  - rotation_axis = [0.09,0,0] 또는 [0,0.09,0]
+  → body에 “롤/피치 토크”를 직접 인가하는 단순화된 자세 제어 입력으로 해석됨.
+  → 즉, 이 모델은 (추력 2개 + roll/pitch 토크 2개)의 4-input으로 6-DOF를 제어하는 구성을 의도.
+
+[권장 확장]
+- yaw 제어가 없음(코액시얼 드론이면 yaw 토크 제어 필요)
+  → actuator 1개 추가 권장: z_torque (rotation_axis=[0,0,k])
+
+2.6 Sensor 정의(로그/평가 지표)
+  - rangefinder: sensor_laser (ref=laser_rangefinder)
+  - gyro: sensor_gyro (ref=imu)
+  - accelerometer: sensor_acc (ref=imu)
+  - framequat: sensor_quat (ref=imu)
+
+- rangefinder(sensor_laser): 아래쪽 거리 측정(ground plane이 있어야 의미 있음)
+- gyro/accelerometer: IMU
+- framequat: imu site의 자세(quaternion)
+
+2.7 현재 MJCF의 “실험 전 필수 보완점”
+(1) 바닥(ground plane)이 없음 → rangefinder, 착륙/충돌 실험이 불가능
+    - worldbody에 plane geom 추가 권장
+(2) 화성 환경 파라미터(중력, 대기 밀도)가 기본값으로 남아있음
+(3) thrust gear 스케일(50N)은 과도하게 큼
+    - Mars hover 기준(총 5.94N 필요): 각 로터 2.97N 정도가 hover
+    - gear=50이면 hover ctrl ≈ 0.059 (부호 포함)
+    - 최적화/제어 실험에선 hover ctrl이 0.3~0.7 정도가 되도록 gear 재튜닝 권장
+
+================================================================================
+3. STL 기반 베이스라인 블레이드 기하 요약(참고: 파라미터 범위 설정용)
+--------------------------------------------------------------------------------
+[상부(top) 블레이드]
+- Bounding box extents (XYZ): dx=0.145420 m, dy=1.210812 m, dz=0.065914 m
+- PCA 기준 tip-to-tip(직경 추정): 1.211563 m
+- 반경 R 추정: 0.605890 m  (≈ 605.9 mm)
+- 메시 표면적(area): 0.272150 m^2  (watertight 아님 → 참고치)
+
+[하부(bottom) 블레이드]
+- Bounding box extents (XYZ): dx=0.143699 m, dy=1.210558 m, dz=0.088076 m
+- PCA 기준 tip-to-tip(직경 추정): 1.211063 m
+- 반경 R 추정: 0.605522 m  (≈ 605.5 mm)
+- 메시 표면적(area): 0.250956 m^2  (watertight 아님 → 참고치)
+
+[스팬 방향 chord / thickness (robust 추정: 5~95 퍼센타일 폭)]
+- 상부 블레이드 샘플:
+  r/R=0.20 | chord≈ 0.0801 m (  80.1 mm) | thickness≈ 0.0322 m (  32.2 mm)
+  r/R=0.40 | chord≈ 0.1135 m ( 113.5 mm) | thickness≈ 0.0289 m (  28.9 mm)
+  r/R=0.60 | chord≈ 0.0888 m (  88.8 mm) | thickness≈ 0.0158 m (  15.8 mm)
+  r/R=0.80 | chord≈ 0.0694 m (  69.4 mm) | thickness≈ 0.0082 m (   8.2 mm)
+  r/R=0.95 | chord≈ 0.0447 m (  44.7 mm) | thickness≈ 0.0043 m (   4.3 mm)
+
+- 하부 블레이드 샘플:
+  r/R=0.20 | chord≈ 0.0784 m (  78.4 mm) | thickness≈ 0.0329 m (  32.9 mm)
+  r/R=0.40 | chord≈ 0.1125 m ( 112.5 mm) | thickness≈ 0.0314 m (  31.4 mm)
+  r/R=0.60 | chord≈ 0.0880 m (  88.0 mm) | thickness≈ 0.0176 m (  17.6 mm)
+  r/R=0.80 | chord≈ 0.0681 m (  68.1 mm) | thickness≈ 0.0089 m (   8.9 mm)
+  r/R=0.95 | chord≈ 0.0447 m (  44.7 mm) | thickness≈ 0.0050 m (   5.0 mm)
+
+================================================================================
+4. 블레이드 파라미터라이제이션(형상 변수화) — MuJoCo/최적화 연동 관점
+--------------------------------------------------------------------------------
+핵심은 “형상 변화”가 MuJoCo의 actuator 출력(추력/토크) 모델로 연결되도록 만드는 것이다.
+
+4.1 추천 파라미터 세트 (12~25 변수)
+(1) Planform(평면 형상): chord 분포 c(r)
+- 제어점 5개(권장): c0(0.15R), c1(0.30R), c2(0.50R), c3(0.70R), c4(0.95R)
+
+(2) Twist(비틀림): θ(r)
+- 제어점 3~5개: θ_root, θ_mid, θ_tip (washout 유지)
+
+(3) Airfoil(단면)
+- L0/L1: t/c, camber, LE radius (간이)
+- L2: CST 계수(상/하면 3~5개)
+
+(4) 구조/질량(등가)
+- 블레이드 질량 스케일 M_b, 관성 스케일 I_b
+- (선택) 스파/스킨 두께로 모드 주파수 제약(진동)
+
+4.2 MuJoCo 연동 방식(2안)
+[A안] Mesh까지 매번 재생성(시각/간섭 포함 정확도↑, 비용↑)
+- 파라미터 → CAD/메시 생성 → MJCF asset mesh 교체 → 모델 reload → 시뮬레이션
+
+[B안] Mesh는 고정(시각 유지), “공력 모델”만 설계에 따라 갱신(비용↓)
+- 파라미터 → (BEMT/서로게이트)로 CT/CP 추정 → thrust/torque를 actuator 입력(ctrl)로 변환
+- 최적화/대량 DOE는 B안이 현실적, 최종 3~5개만 A안으로 검증 권장
+
+================================================================================
+5. 실험 설계(Experiment Plan) — MuJoCo 기반으로 구체화
+--------------------------------------------------------------------------------
+기존 계획(L0→L1→L2)을 유지하되, L1에서 MuJoCo를 “동역학 플랫폼”으로 사용한다.
+
+--------------------------------------------------------------------------------
+5.1 E0: MuJoCo 베이스라인 동역학 캘리브레이션(필수)
+--------------------------------------------------------------------------------
+[목표]
+- mhs.xml이 기본적으로 안정적으로 integrate 되는지, 제어 입력이 원하는 방향(상승/자세 변화)을 만드는지 확인.
+
+[준비: MJCF 최소 수정 권장]
+1) <option gravity="0 0 -3.71"> 추가
+2) worldbody에 ground plane 추가(착륙/레이저 range 테스트용)
+3) thrust gear 재튜닝(hover ctrl이 0.3~0.7 수준이 되도록)
+4) yaw 제어가 필요하면 z_torque actuator 추가
+
+[실험]
+- ctrl[0]=thrust1, ctrl[1]=thrust2, ctrl[2]=x_movement(roll torque), ctrl[3]=y_movement(pitch torque)
+- 입력 테스트 시퀀스:
+  - t=0~1s: ctrl 모두 0
+  - t=1~2s: thrust1=thrust2=+0.2 (또는 -0.2) → 상승/하강 부호 확인
+  - t=2~3s: x_movement=+0.2 → roll 변화 확인
+  - t=3~4s: y_movement=+0.2 → pitch 변화 확인
+
+[로그]
+- sensor_quat, sensor_gyro, sensor_acc, sensor_laser
+- base position/velocity(qpos/qvel에서 freejoint 상태)
+
+--------------------------------------------------------------------------------
+5.2 E1: Hover 성능(추력-전력-제약) 맵 — “블레이드 설계 평가 핵심”
+--------------------------------------------------------------------------------
+MuJoCo는 동역학 통합, 공력/전력은 외부 모델로 계산한다.
+- 외부 모델(권장): BEMT로 CT/CP(=추력/전력 계수) 계산
+- 변환식(예):
+  - T = CT * rho * A * (Omega*R)^2
+  - Q = CP * rho * A * (Omega*R)^2 * R
+  - P = Q * Omega
+- MuJoCo 주입:
+  - thrust1/thrust2 actuator를 사용해 T를 body에 force로 인가(각 로터 분배 포함)
+  - (권장) reaction torque까지 포함하려면 yaw torque actuator(또는 site rotation_axis) 추가
+
+[실험 변수]
+- rho: 0.012~0.021 (Mars range)
+- Omega(RPM), collective(또는 equivalent ctrl)
+- 블레이드 설계 파라미터(12~25)
+
+[결과 KPI]
+- hover hold에서 altitude error, power, control margin(포화율)
+- constraint(M_tip, RPM_max, torque_max) 위반율
+
+--------------------------------------------------------------------------------
+5.3 E2: Robust Hover(최악 밀도) + 제어여유
+--------------------------------------------------------------------------------
+- rho_min에서 “추력 여유”와 “전력 최소”의 파레토를 만든다.
+- 제어여유(roll/pitch torque 입력 크기)가 급격히 증가하는 설계는 제외(불안정 후보)
+
+--------------------------------------------------------------------------------
+5.4 E3: 전진/기동(tilt 기반) — 현재 MJCF 구조에 맞춘 버전
+--------------------------------------------------------------------------------
+현재 모델은 roll/pitch torque 입력이 있으므로, 다음 방식이 가능:
+- pitch torque로 기체를 기울여 thrust의 수평 성분을 만들어 전진
+- 시나리오:
+  - 목표 속도/위치 추종(간단 PID)
+  - gust disturbance(외란 force)를 가정해 robust 성능 평가
+
+KPI:
+- 경로추종 오차, 제어 입력 RMS/포화율, 안정성(발산 여부)
+
+--------------------------------------------------------------------------------
+5.5 E4: 구조/진동(등가 모델) — “최적화 제약”으로 넣기
+--------------------------------------------------------------------------------
+- 블레이드 t/c, 스파/스킨 두께가 변하면 모드 주파수 하락 가능
+- 최적화 제약 예:
+  - f1_bending >= f_min
+  - |f_mode - n*rev| >= margin (n=1,2,...)
+
+================================================================================
+6. 최적설계(Optimization) — MuJoCo 연동형 다목적 문제
+--------------------------------------------------------------------------------
+[목표(예시)]
+- Minimize: P_hover(rho_nom), P_hover(rho_min)
+- Maximize: T_margin(rho_min), control_margin(포화율 최소), vibration_margin
+
+[제약(예시)]
+- RPM <= RPM_max
+- M_tip <= M_tip_max
+- hover 안정 유지(altitude divergence 금지)
+- control saturation < 5% (time fraction)
+
+[워크플로우(권장)]
+- DOE(LHS) 80~200점 → surrogate 구축 → NSGA-II/BO
+- 상위 후보 5~10개 → MuJoCo time-domain 검증(E0/E3)
+- 최종 3~5개 → Mesh 재생성(A안) + (가능하면) 고충실도 CFD/FEA
+
+================================================================================
+7. MuJoCo 모델 수정 체크리스트(권장 패치 요약)
+--------------------------------------------------------------------------------
+(1) 화성 중력: <option gravity="0 0 -3.71">
+(2) 대기 밀도: density를 실험 변수로(0.012~0.021)
+(3) ground plane 추가(레이저/착륙 테스트)
+(4) thrust gear 튜닝: hover ctrl이 너무 작지 않도록(0.3~0.7 권장)
+(5) yaw torque actuator 추가(필요 시)
+(6) (선택) rotor joint에 motor 추가 → 시각적으로 회전 표현 + gyroscopic 효과 포함
+
+================================================================================
+부록 A. 한 줄 요약(현재 MJCF 기준)
+--------------------------------------------------------------------------------
+- 총질량 ≈ {total_mass:.3f} kg, timestep={timestep}s
+- 제어입력 4개: thrust1/2(힘), x_movement/y_movement(롤/피치 토크)
+- 센서: rangefinder + IMU(gyro/acc/quaternion)
+- 실험 전: 화성 중력/대기/바닥/스케일 튜닝이 필요
+
+끝.

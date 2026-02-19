@@ -137,23 +137,29 @@
                     quat="-0.4 0.2 -0.45 1"
                 /> 
             </body>
-            <body name="blades" quat="0 0 1 0">
-                <geom 
-                    class="visual" 
-                    material="blades" 
-                    mesh="topBlades" 
+            <!-- 상부 로터: CW 회전 -->
+            <body name="top_rotor" pos="0 0 0" quat="0 0 1 0">
+                <joint name="top_rotor_joint" type="hinge" axis="0 0 1" damping="0" frictionloss="0"/>
+                <geom
+                    class="visual"
+                    material="blades"
+                    mesh="topBlades"
                     pos="0 0 -0.0675"
                 />
-                <geom 
-                    class="visual" 
-                    material="blades" 
-                    mesh="bottomBlades" 
+                <geom class="rotor" mass="0.1" pos="0 0 -0.0675" size="0.64 0.64 0.02"/>
+                <site name="thrust1" pos="0 0 -0.0830" quat="0 0 1 0"/>
+            </body>
+            <!-- 하부 로터: CCW 회전 -->
+            <body name="bottom_rotor" pos="0 0 0" quat="0 0 1 0">
+                <joint name="bottom_rotor_joint" type="hinge" axis="0 0 1" damping="0" frictionloss="0"/>
+                <geom
+                    class="visual"
+                    material="blades"
+                    mesh="bottomBlades"
                     pos="0 0 0.0092"
                     quat="0.6 0 0 1"
                 />
-                <geom class="rotor" mass="0.2" pos="0 0 -0.0675" size="0.64 0.64 0.02"/>
-                <geom class="rotor" mass="0.2" pos="0 0 0.0092" size="0.64 0.64 0.02"/>
-                <site name="thrust1" pos="0 0 -0.0830" quat="0 0 1 0"/>
+                <geom class="rotor" mass="0.1" pos="0 0 0.0092" size="0.64 0.64 0.02"/>
                 <site name="thrust2" pos="0 0 0.0150" quat="0 0 1 0"/>
             </body>
 
