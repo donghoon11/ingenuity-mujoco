@@ -1,0 +1,24 @@
+{
+  "n_samples": 29,
+  "targets": [
+    "P_total",
+    "FM",
+    "T_margin_pct_rhomin"
+  ],
+  "cv_errors": {
+    "P_total": {
+      "rmse": 42.11829289621267,
+      "r2": 0.22028352581939137
+    },
+    "FM": {
+      "rmse": 0.044111536711325935,
+      "r2": -0.7022034167192244
+    },
+    "T_margin_pct_rhomin": {
+      "rmse": 17.645466112422913,
+      "r2": -2.1223079133896796
+    }
+  },
+  "feasible_only": true,
+  "doe_file": "E:\\mujoco_projects\\ingenuity-mujoco\\0219\\design\\results\\doe\\doe_results.json"
+}

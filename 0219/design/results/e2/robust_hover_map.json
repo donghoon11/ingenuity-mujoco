@@ -1,0 +1,153 @@
+{
+  "sweep_results": [
+    {
+      "rho": 0.012,
+      "bemt": {
+        "T_per_rotor": 3.2406388875388106,
+        "P_total": 190.21172605572784,
+        "FM": 0.3686255950091906,
+        "CT": 0.009030480380364636,
+        "CP": 0.0016461363143843162,
+        "ctrl_thrust": 0.5401064812564684,
+        "T_margin_pct": 9.185946345647267,
+        "can_hover_bemt": true
+      },
+      "mujoco_kpis": {
+        "alt_error_rms": 0.259935743900536,
+        "alt_error_max": 0.5,
+        "alt_error_ss_rms": 0.24159229351540418,
+        "alt_error_ss_max": 0.24527365410439828,
+        "roll_rms": 1.1851496207770161e-18,
+        "pitch_rms": 7.50366614676224e-19,
+        "ctrl_saturation_rate": 0.0232,
+        "stable": true,
+        "settling_time": 9.992
+      }
+    },
+    {
+      "rho": 0.014,
+      "bemt": {
+        "T_per_rotor": 3.801910275417579,
+        "P_total": 223.2427360494432,
+        "FM": 0.36951228176521694,
+        "CT": 0.009081033711880276,
+        "CP": 0.0016559951332150268,
+        "ctrl_thrust": 0.6336517125695965,
+        "T_margin_pct": 28.096707392775567,
+        "can_hover_bemt": true
+      },
+      "mujoco_kpis": {
+        "alt_error_rms": 0.2847748752217684,
+        "alt_error_max": 0.5,
+        "alt_error_ss_rms": 0.2557498475384354,
+        "alt_error_ss_max": 0.26183569637021353,
+        "roll_rms": 1.242193583671082e-18,
+        "pitch_rms": 1.0884106646680489e-18,
+        "ctrl_saturation_rate": 0.0256,
+        "stable": true,
+        "settling_time": 9.992
+      }
+    },
+    {
+      "rho": 0.015,
+      "bemt": {
+        "T_per_rotor": 4.085618066842644,
+        "P_total": 237.98365750556815,
+        "FM": 0.37304508380466916,
+        "CT": 0.009108103697985738,
+        "CP": 0.0016476525353022252,
+        "ctrl_thrust": 0.6809363444737739,
+        "T_margin_pct": 37.655595244024376,
+        "can_hover_bemt": true
+      },
+      "mujoco_kpis": {
+        "alt_error_rms": 0.2984199497598888,
+        "alt_error_max": 0.5,
+        "alt_error_ss_rms": 0.26849705349812547,
+        "alt_error_ss_max": 0.2703317889326964,
+        "roll_rms": 7.929975313154706e-19,
+        "pitch_rms": 4.904325901649942e-19,
+        "ctrl_saturation_rate": 0.0264,
+        "stable": true,
+        "settling_time": 9.992
+      }
+    },
+    {
+      "rho": 0.017,
+      "bemt": {
+        "T_per_rotor": 4.660097248501696,
+        "P_total": 263.1621728545962,
+        "FM": 0.3860219344280772,
+        "CT": 0.009166583917976983,
+        "CP": 0.001607623320136048,
+        "ctrl_thrust": 0.7766828747502826,
+        "T_margin_pct": 57.01136282013801,
+        "can_hover_bemt": true
+      },
+      "mujoco_kpis": {
+        "alt_error_rms": 0.33348264677629524,
+        "alt_error_max": 0.5,
+        "alt_error_ss_rms": 0.3160082083308069,
+        "alt_error_ss_max": 0.31600888312088693,
+        "roll_rms": 9.677329484539019e-19,
+        "pitch_rms": 5.536735709585143e-19,
+        "ctrl_saturation_rate": 0.028,
+        "stable": true,
+        "settling_time": 9.992
+      }
+    },
+    {
+      "rho": 0.021,
+      "bemt": {
+        "T_per_rotor": 5.82861417363021,
+        "P_total": 312.2867946897672,
+        "FM": 0.409404047500036,
+        "CT": 0.00928127142584318,
+        "CP": 0.0015443441261146307,
+        "ctrl_thrust": 0.971435695605035,
+        "T_margin_pct": 96.38187916543835,
+        "can_hover_bemt": true
+      },
+      "mujoco_kpis": {
+        "alt_error_rms": 0.41569063596444006,
+        "alt_error_max": 0.5,
+        "alt_error_ss_rms": 0.4133845146796513,
+        "alt_error_ss_max": 0.41338451608320415,
+        "roll_rms": 7.386252881754742e-19,
+        "pitch_rms": 8.285656188073245e-19,
+        "ctrl_saturation_rate": 0.0312,
+        "stable": true,
+        "settling_time": 9.992
+      }
+    }
+  ],
+  "stable_rho_range": [
+    0.012,
+    0.021
+  ],
+  "design_vector": [
+    0.07925,
+    0.113,
+    0.0884,
+    0.06875,
+    0.0447,
+    25.0,
+    15.0,
+    8.0,
+    0.25,
+    0.10514541387024609,
+    0.03,
+    2537.0
+  ],
+  "params": {
+    "rho_values": [
+      0.012,
+      0.014,
+      0.015,
+      0.017,
+      0.021
+    ],
+    "hover_duration": 10.0,
+    "z_ref": 1.0
+  }
+}

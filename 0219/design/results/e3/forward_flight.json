@@ -1,0 +1,50 @@
+{
+  "kpis": {
+    "alt_error_rms": 1.076619983534175,
+    "alt_error_max": 2.5801708324993156,
+    "alt_error_ss_rms": 1.8347741243834854,
+    "alt_error_ss_max": 2.5801708324993156,
+    "roll_rms": 1.2637168923864084,
+    "pitch_rms": 0.46564069407882164,
+    "ctrl_saturation_rate": 0.5446153846153846,
+    "stable": true,
+    "settling_time": 12.992,
+    "xy_tracking_rms": 78.00612443913276,
+    "xy_tracking_max": 232.7363412989874,
+    "pos3d_tracking_rms": 78.01355369807486,
+    "xy_tracking_rms_flight": 3.8173317057445244
+  },
+  "params": {
+    "duration": 13.0,
+    "waypoints": [
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        3.0,
+        3.0,
+        0.0,
+        1.0
+      ],
+      [
+        8.0,
+        3.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "gust_enabled": true,
+    "gust": {
+      "t0": 6.0,
+      "dt": 1.0,
+      "fx": 0.2,
+      "fy": 0.0,
+      "fz": 0.0
+    },
+    "rho": 0.015,
+    "bemt_ctrl_thrust": 0.6809363444737739
+  }
+}

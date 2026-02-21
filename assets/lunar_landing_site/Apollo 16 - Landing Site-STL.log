@@ -1,0 +1,26 @@
+STL translation to Solid Edge
+Date: 금요일,2월 20,2026 02:42오후
+Source File:E:\mujoco_projects\ingenuity-mujoco\assets\lunar_landing_site\Apollo 16 - Landing Site.stl
+Author: Unknown
+Organization: Unknown
+Source System: DEX
+
+Hardware:
+Processor: 11th Gen Intel(R) Core(TM) i7-11700K @ 3.60GHz
+Operating System: Windows 10 Professional
+Installed Memory: 31.79 GB
+
+Software Information:
+Parasolid Version: 38.0.150
+PSBodyshop Version: 38.0.111
+STL Adapter Version: 1700.0.0
+Solid Edge Version: 226.00.01.004 x64
+
+STL Import Options
+Heal Mesh Faults:Off
+Make Base Feature:On
+Enable Logging:On
+
+Translation progress:
+Translation process completed
+Time required to translate:00 : 00 : 00

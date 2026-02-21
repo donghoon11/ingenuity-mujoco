@@ -1,0 +1,32 @@
+{
+  "baseline": {
+    "label": "Baseline (Original)",
+    "metrics": {
+      "z_rmse_total": 0.09808935594434577,
+      "z_rmse_step": 0.027262590639730123,
+      "settle_time_s": 1.5600000000000027,
+      "att_rmse_total": 0.05006007602245946,
+      "att_rmse_maneuver": 0.07471406933868238,
+      "thrust_rms": 0.15945704122964077,
+      "thrust_excess_rms": 0.02528510486899445,
+      "thrust_sat_steps": 2.0,
+      "drift_rms_ms": 2.0570859803816604e-15,
+      "energy_integral": 3.9292665518646337
+    }
+  },
+  "optimized": {
+    "label": "Optimized Blade",
+    "metrics": {
+      "z_rmse_total": 0.0966312874445763,
+      "z_rmse_step": 0.02668053373839298,
+      "settle_time_s": 1.5520000000000027,
+      "att_rmse_total": 0.0402763940957938,
+      "att_rmse_maneuver": 0.06227521257162207,
+      "thrust_rms": 0.12893252403602018,
+      "thrust_excess_rms": 0.024892676154948796,
+      "thrust_sat_steps": 2.0,
+      "drift_rms_ms": 2.3162375915973005e-15,
+      "energy_integral": 3.1556910708412165
+    }
+  }
+}

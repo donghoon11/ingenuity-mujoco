@@ -1,0 +1,81 @@
+<mujoco>
+    <include file="mhs_optimized.xml"/>
+
+    <statistic center="0 0 0.1" extent="0.6" meansize=".05"/>
+
+    <visual>
+        <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+        <rgba haze="0.15 0.25 0.35 1"/>
+        <global azimuth="-20" elevation="-20"/>
+        <quality shadowsize="4096"/>
+    </visual>
+
+    <asset>
+        <!-- Apollo 16 terrain: 138K faces, 255m square
+             XY scaled to 7m tiles, Z exaggerated 2.5x for visible bumps -->
+        <mesh name="terrain_a16"
+              file="lunar_landing_site/Apollo 16 - Landing Site.stl"
+              scale="0.027397 0.027397 0.068493"/>
+
+        <!-- Lunar regolith: light gray matching reference images -->
+        <texture type="2d" name="lunar_regolith"
+                 builtin="flat"
+                 rgb1="0.72 0.71 0.69"
+                 width="64" height="64"/>
+        <material name="lunar_surface"
+                  texture="lunar_regolith"
+                  rgba="0.80 0.79 0.77 1"
+                  reflectance="0.03"
+                  specular="0.05"
+                  shininess="0.01"/>
+
+        <!-- Ground plane: slightly darker gray -->
+        <texture type="2d" name="lunar_ground"
+                 builtin="flat"
+                 rgb1="0.65 0.64 0.62"
+                 width="64" height="64"/>
+        <material name="lunar_ground" texture="lunar_ground"
+                  rgba="0.72 0.71 0.69 1"
+                  reflectance="0.02"/>
+
+        <!-- Space skybox: dark with subtle blue-black gradient -->
+        <texture type="skybox" builtin="gradient"
+                 rgb1="0.03 0.05 0.08" rgb2="0.0 0.0 0.0"
+                 width="512" height="3072"/>
+    </asset>
+
+    <worldbody>
+        <!-- Collision ground at Z=0 -->
+        <geom name="lunar_floor" type="plane" size="15 15 0.1"
+              material="lunar_ground" pos="0 0 0"/>
+
+        <!--
+            Tiled terrain: 2x2 grid of 7m tiles = 14m x 14m
+            Single mesh (Apollo 16) with Z-axis rotations for variety
+            Z offset = -mean_z = -0.523 aligns average surface near Z=0
+        -->
+
+        <!-- Tile (0,0): no rotation -->
+        <geom name="tile_00" type="mesh" mesh="terrain_a16"
+              material="lunar_surface" pos="-3.5 -3.5 -0.523"
+              contype="0" conaffinity="0"/>
+        <!-- Tile (1,0): 90 deg Z rotation -->
+        <geom name="tile_10" type="mesh" mesh="terrain_a16"
+              material="lunar_surface" pos="3.5 -3.5 -0.523"
+              quat="0.707 0 0 0.707"
+              contype="0" conaffinity="0"/>
+        <!-- Tile (0,1): 180 deg Z rotation -->
+        <geom name="tile_01" type="mesh" mesh="terrain_a16"
+              material="lunar_surface" pos="-3.5 3.5 -0.523"
+              quat="0 0 0 1"
+              contype="0" conaffinity="0"/>
+        <!-- Tile (1,1): 270 deg Z rotation -->
+        <geom name="tile_11" type="mesh" mesh="terrain_a16"
+              material="lunar_surface" pos="3.5 3.5 -0.523"
+              quat="0.707 0 0 -0.707"
+              contype="0" conaffinity="0"/>
+
+        <!-- Directional overhead light (from scene.xml) -->
+        <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    </worldbody>
+</mujoco>

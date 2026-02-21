@@ -54,7 +54,7 @@ def run_e0(use_viewer: bool = False):
 
     # ─── Test 1: Freefall (0~1s) ──────────────────────────────────────────
     print("[Test 1] Freefall (ctrl=0, 1s)")
-    sim.reset()
+    sim.reset(z_init=3.0)  # 충분한 초기 고도 → 1s 낙하 중 바닥 충돌 방지
     z_positions = []
     z_velocities = []
     times = []

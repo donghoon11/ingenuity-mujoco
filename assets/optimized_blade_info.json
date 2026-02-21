@@ -1,0 +1,26 @@
+{
+  "design_vector": [
+    0.10709063282230284,
+    0.13858277037675873,
+    0.14979864240630603,
+    0.11995936456417765,
+    0.016689766352348496,
+    11.42288030978223,
+    24.9052748914351,
+    14.730406901335702,
+    0.20884709240152496,
+    0.1182446693544811,
+    0.05983737434683259,
+    3012.844038238898
+  ],
+  "FM": 0.4641773413171445,
+  "P_total": 680.3819404256849,
+  "RPM": 3012.844038238898,
+  "tip_mach": 0.7966483319927133,
+  "stl_files": {
+    "top_stl": "E:\\mujoco_projects\\ingenuity-mujoco\\assets\\optimized_topblades.stl",
+    "bottom_stl": "E:\\mujoco_projects\\ingenuity-mujoco\\assets\\optimized_bottomblades.stl",
+    "n_triangles_top": 32278,
+    "n_triangles_bottom": 30862
+  }
+}

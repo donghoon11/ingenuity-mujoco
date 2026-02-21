@@ -1,0 +1,18 @@
+{
+  "doe": {
+    "skipped": true,
+    "n_samples": 100,
+    "n_feasible": 29
+  },
+  "surrogate": {
+    "skipped": true
+  },
+  "optimizer": {
+    "n_pareto": 60,
+    "elapsed_s": 3.215841293334961
+  },
+  "mujoco": {
+    "n_validated": 5,
+    "elapsed_s": 1.1909749507904053
+  }
+}
